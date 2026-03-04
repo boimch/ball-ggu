@@ -1,66 +1,44 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3월 볼꾸 세션 신청 & 관리 시스템</title>
+<title>3월 볼꾸 세션 신청 시스템 (Google Sheets)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
 body { font-family: 'Noto Sans KR', sans-serif; background-color: #fdf9f3; margin: 0; padding: 0; }
-.tab-btn.active { border-bottom: 3px solid #ff82a9; color: #ff82a9; }
 .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ff82a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-/* Modal Style */
-.modal-overlay { background-color: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; }
-.modal-overlay.active { display: flex; }
 </style>
 </head>
 <body class="p-4 md:p-6">
 
-<!-- 비밀번호 확인 모달 -->
-<div id="auth-modal" class="modal-overlay">
-<div class="bg-white p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-sm mx-4">
-<h3 class="text-xl font-bold mb-4 text-center text-gray-800">🔐 관리자 인증</h3>
-<p class="text-sm text-gray-500 mb-6 text-center">관리자 비밀번호를 입력해주세요.</p>
-<input type="password" id="admin-password" class="w-full p-3 border rounded-xl mb-4 outline-pink-400 text-center text-2xl tracking-widest" placeholder="****" maxlength="4" inputmode="numeric">
-<div class="flex gap-3">
-<button onclick="closeAuthModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold">취소</button>
-<button onclick="checkAdminPassword()" class="flex-1 py-3 bg-pink-500 text-white rounded-xl font-bold shadow-lg">확인</button>
-</div>
-</div>
-</div>
-
-<div class="max-w-4xl mx-auto">
-<!-- 탭 메뉴 -->
-<div class="flex space-x-6 md:space-x-8 mb-6 border-b border-gray-200">
-<button onclick="switchTab('form')" id="tab-form" class="tab-btn active pb-4 font-bold text-base md:text-lg transition-all">📝 신청하기</button>
-<button onclick="tryAccessAdmin()" id="tab-admin" class="tab-btn pb-4 font-bold text-base md:text-lg text-gray-400 transition-all">🔐 관리자 리스트</button>
-</div>
-
-<!-- [1] 신청 폼 섹션 -->
+<div class="max-w-2xl mx-auto">
+<!-- 신청 폼 섹션 -->
 <div id="section-form" class="bg-white rounded-3xl shadow-xl overflow-hidden">
 <div class="bg-pink-400 p-6 md:p-10 text-white relative">
 <h1 class="text-2xl md:text-3xl font-bold">🖊️ 3월 볼꾸 세션 신청</h1>
-<p class="mt-2 opacity-90 text-sm md:text-base">선착순 50명! 현재 <span id="live-count" class="font-bold underline text-yellow-200">--</span>명 신청 중</p>
+<p class="mt-2 opacity-90 text-sm md:text-base">신청 즉시 구글 스프레드시트로 저장됩니다.</p>
 </div>
 <form id="regForm" class="p-6 md:p-8 space-y-6">
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 <div>
 <label class="block text-sm font-bold mb-2">이름</label>
-<input type="text" id="name" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="성함을 입력하세요">
+<input type="text" name="name" id="name" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="성함을 입력하세요">
 </div>
 <div>
 <label class="block text-sm font-bold mb-2">팀</label>
-<input type="text" id="team" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="소속 팀을 입력하세요">
+<input type="text" name="team" id="team" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="소속 팀을 입력하세요">
 </div>
 </div>
 
 <div>
 <label class="block text-sm font-bold mb-2">사내 이메일 주소</label>
 <div class="relative flex items-center">
-<input type="text" id="emailId" required
+<input type="text" name="emailId" id="emailId" required
 class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400 pr-32"
 placeholder="이메일 아이디">
 <span class="absolute right-4 text-gray-400 font-medium text-sm md:text-base">@coupang.com</span>
@@ -68,11 +46,12 @@ placeholder="이메일 아이디">
 </div>
 <div class="bg-pink-50 p-4 md:p-6 rounded-2xl border border-pink-100">
 <label class="block text-sm font-bold mb-3 text-pink-800">
-⚠️ 해당 프로그램은 선착순이기 때문에 신청하시면 꼭 참석해 주셔야 합니다. 이해하셨나요?
+⚠️ 선착순 신청 안내
 </label>
-<select id="agreement" required class="w-full p-3 bg-white border border-pink-200 rounded-xl outline-pink-400 text-sm">
-<option value="" disabled selected>선택해 주세요</option>
-<option value="네, 이해했습니다">네, 이해했습니다</option>
+<p class="text-xs text-pink-600 mb-3">신청하시면 명단이 실시간으로 관리자 구글 시트에 기록됩니다.</p>
+<select name="agreement" id="agreement" required class="w-full p-3 bg-white border border-pink-200 rounded-xl outline-pink-400 text-sm">
+<option value="" disabled selected>내용을 확인했습니다</option>
+<option value="확인완료">네, 이해했습니다</option>
 </select>
 </div>
 
@@ -80,142 +59,51 @@ placeholder="이메일 아이디">
 <span>신청서 제출</span>
 </button>
 </form>
-</div>
 
-<!-- [2] 관리자 리스트 섹션 -->
-<div id="section-admin" class="hidden bg-white rounded-3xl shadow-xl p-6 md:p-8">
-<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-<h2 class="text-xl md:text-2xl font-bold">📊 참여자 명단 (<span id="admin-count">0</span>/50)</h2>
-<div class="flex gap-2 w-full md:w-auto">
-<button onclick="downloadExcel()" class="flex-1 md:flex-none bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600">
-<i class="fa-solid fa-file-excel mr-2"></i>엑셀 다운로드
-</button>
+<!-- 성공 메시지 -->
+<div id="success-msg" class="hidden p-10 text-center space-y-4">
+<div class="text-6xl">🎉</div>
+<h2 class="text-2xl font-bold text-gray-800">신청이 완료되었습니다!</h2>
+<p class="text-gray-500">작성하신 정보가 안전하게 전달되었습니다.</p>
+<button onclick="location.reload()" class="text-pink-500 underline mt-4">다시 작성하기</button>
 </div>
-</div>
-<div class="overflow-x-auto -mx-6 md:mx-0">
-<table class="w-full text-left border-collapse min-w-[500px]">
-<thead class="bg-gray-50 border-b">
-<tr>
-<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">번호</th>
-<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이름</th>
-<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">팀</th>
-<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이메일</th>
-<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">신청시간</th>
-</tr>
-</thead>
-<tbody id="admin-table-body">
-<!-- 데이터 로드됨 -->
-</tbody>
-</table>
-</div>
-<div id="no-data" class="text-center py-10 text-gray-400">신청자가 없습니다.</div>
 </div>
 </div>
 
-<!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+<script>
+// 1. 구글 앱스 스크립트 배포 후 받은 URL을 여기에 넣으세요.
+const scriptURL = 'https://script.google.com/a/macros/cpg.coupang.com/s/AKfycbwckZj8lROuXklLYgYh2L8u8QnhmauXXbjK8-FNA7es70DDz_0FzjWccOaQOs_KNKG1/exec';
+const form = document.getElementById('regForm');
+const submitBtn = document.getElementById('submit-btn');
+const successMsg = document.getElementById('success-msg');
 
-// Firebase 설정 보호 및 초기화
-let db, auth;
-// Canvas 외부 환경(GitHub 등)에서 실행될 때 오류를 방지하기 위해 기본값 처리
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ball-ggu-session-001';
-
-function initFirebase() {
-try {
-let config = {};
-// Canvas 환경 변수가 있는지 확인
-if (typeof __firebase_config !== 'undefined') {
-config = JSON.parse(__firebase_config);
-} else {
-// GitHub Pages 등 외부에서 실행할 때 직접 여기에 Firebase 설정을 넣으셔도 됩니다.
-// 현재는 오류 방지를 위해 빈 객체일 경우 초기화를 중단하지 않고 로딩 메시지만 띄웁니다.
-console.warn("외부 환경에서 실행 중입니다. Firebase 설정이 필요합니다.");
-}
-
-if (!config.apiKey) {
-console.log("Firebase API Key가 없습니다. Canvas 미리보기 모드가 아니면 설정을 수동으로 입력해야 합니다.");
-// 임시 방편으로 화면 텍스트 오류만 가림
+form.addEventListener('submit', e => {
+e.preventDefault();
+// 앱스 스크립트 URL이 설정되지 않았을 경우 안내
+if (scriptURL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL') {
+alert("구글 스크립트 URL 설정이 필요합니다. 안내에 따라 URL을 복사해 넣어주세요!");
 return;
 }
-const app = initializeApp(config);
-db = getFirestore(app);
-auth = getAuth(app);
-setupAuth();
-} catch (e) {
-console.error("Firebase 초기화 에러:", e);
-}
-}
 
-let userLoaded = false;
-let allRegistrations = [];
-let isAdminAuthenticated = false;
-
-async function setupAuth() {
-if (!auth) return;
-onAuthStateChanged(auth, (user) => {
-if (user && !userLoaded) {
-userLoaded = true;
-startListening();
-}
-});
-
-try {
-if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-await signInWithCustomToken(auth, __initial_auth_token);
-} else {
-await signInAnonymously(auth);
-}
-} catch (error) {
-console.error("인증 에러:", error);
-}
-}
-
-function startListening() {
-if (!db) return;
-const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
-const q = query(registrationsRef);
-onSnapshot(q, (snapshot) => {
-allRegistrations = snapshot.docs.map(doc => ({
-id: doc.id,
-...doc.data()
-}));
-allRegistrations.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-updateUI();
-}, (error) => {
-console.error("데이터 수신 에러:", error);
-});
-}
-
-function updateUI() {
-const liveCount = document.getElementById('live-count');
-const adminCount = document.getElementById('admin-count');
-if (liveCount) liveCount.innerText = allRegistrations.length;
-if (adminCount) adminCount.innerText = allRegistrations.length;
-const submitBtn = document.getElementById('submit-btn');
-if (allRegistrations.length >= 50) {
 submitBtn.disabled = true;
-submitBtn.innerHTML = "신청 마감됨";
-submitBtn.className = "w-full bg-gray-400 text-white font-bold py-4 rounded-xl cursor-not-allowed";
-} else {
-submitBtn.disabled = false;
-submitBtn.innerHTML = "<span>신청서 제출</span>";
-submitBtn.className = "w-full bg-pink-500 text-white font-bold py-4 rounded-xl hover:bg-pink-600 shadow-lg transition-all flex justify-center items-center";
-}
-renderAdminTable();
-}
+submitBtn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
 
-document.getElementById('regForm').addEventListener('submit', async (e) => {
-e.preventDefault();
-if (!auth || !auth.currentUser) {
-alert("시스템 연결 중입니다. 잠시만 기다려주세요.");
-받은메일 표시
-받은메일 표시
-보낸 사람: Boim BI Choi [Eats Ads Brand Management] <bochoi60@coupang.com>
-보낸 날짜: 2026년 3월 4일 수요일 오후 11:41
-받는 사람: Boim Choi <boimch@gmail.com>
-제목:
- 
-받은메일 표시
+// 데이터 전송 (이메일 도메인 합치기)
+const formData = new FormData(form);
+const fullEmail = document.getElementById('emailId').value + "@coupang.com";
+formData.set('email', fullEmail); // 'email' 이라는 이름으로 시트에 저장됨
+
+fetch(scriptURL, { method: 'POST', body: formData })
+.then(response => {
+form.classList.add('hidden');
+successMsg.classList.remove('hidden');
+})
+.catch(error => {
+alert('오류가 발생했습니다: ' + error.message);
+submitBtn.disabled = false;
+submitBtn.innerHTML = '<span>신청서 제출</span>';
+});
+});
+</script>
+</body>
+</html>
