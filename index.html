@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3월 볼꾸 세션 신청 & 관리 시스템</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+body { font-family: 'Noto Sans KR', sans-serif; background-color: #fdf9f3; }
+.tab-btn.active { border-bottom: 3px solid #ff82a9; color: #ff82a9; }
+.loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ff82a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body class="p-6">
+
+<div class="max-w-4xl mx-auto">
+<!-- 탭 메뉴 -->
+<div class="flex space-x-8 mb-8 border-b border-gray-200">
+<button onclick="switchTab('form')" id="tab-form" class="tab-btn active pb-4 font-bold text-lg transition-all">📝 신청하기</button>
+<button onclick="switchTab('admin')" id="tab-admin" class="tab-btn pb-4 font-bold text-lg text-gray-400 transition-all">🔐 관리자 리스트</button>
+</div>
+
+<!-- [1] 신청 폼 섹션 -->
+<div id="section-form" class="bg-white rounded-3xl shadow-xl overflow-hidden">
+<div class="bg-pink-400 p-10 text-white relative">
+<h1 class="text-3xl font-bold">🖊️ 3월 볼꾸 세션 신청</h1>
+<p class="mt-2 opacity-90">선착순 50명! 현재 <span id="live-count" class="font-bold underline text-yellow-200">--</span>명 신청 중</p>
+</div>
+<form id="regForm" class="p-8 space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-sm font-bold mb-2">이름</label>
+<input type="text" id="name" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="성함을 입력하세요">
+</div>
+<div>
+<label class="block text-sm font-bold mb-2">팀</label>
+<input type="text" id="team" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="소속 팀을 입력하세요">
+</div>
+</div>
+
+<div>
+<label class="block text-sm font-bold mb-2">사내 이메일 주소</label>
+<div class="relative flex items-center">
+<input type="text" id="emailId" required
+class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400 pr-32"
+placeholder="이메일 아이디">
+<span class="absolute right-4 text-gray-400 font-medium">@coupang.com</span>
+</div>
+</div>
+<div class="bg-pink-50 p-6 rounded-2xl border border-pink-100">
+<label class="block text-sm font-bold mb-3 text-pink-800">
+⚠️ 해당 프로그램은 선착순이기 때문에 신청하시면 꼭 참석해 주셔야 합니다. 이해하셨나요?
+</label>
+<select id="agreement" required class="w-full p-3 bg-white border border-pink-200 rounded-xl outline-pink-400">
+<option value="" disabled selected>선택해 주세요</option>
+<option value="네, 이해했습니다">네, 이해했습니다</option>
+</select>
+</div>
+
+<button type="submit" id="submit-btn" class="w-full bg-pink-500 text-white font-bold py-4 rounded-xl hover:bg-pink-600 shadow-lg transition-all flex justify-center items-center">
+<span>신청서 제출</span>
+</button>
+</form>
+</div>
+
+<!-- [2] 관리자 리스트 섹션 -->
+<div id="section-admin" class="hidden bg-white rounded-3xl shadow-xl p-8">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+<h2 class="text-2xl font-bold">📊 참여자 명단 (<span id="admin-count">0</span>/50)</h2>
+<div class="flex gap-2">
+<button onclick="downloadExcel()" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600">
+<i class="fa-solid fa-file-excel mr-2"></i>엑셀 다운로드
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-gray-50 border-b">
+<tr>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">번호</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이름</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">팀</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이메일</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">신청시간</th>
+</tr>
+</thead>
+<tbody id="admin-table-body">
+<!-- 데이터 로드됨 -->
+</tbody>
+</table>
+</div>
+<div id="no-data" class="text-center py-10 text-gray-400">신청자가 없습니다.</div>
+</div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+// Firebase 설정 로드
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ball-ggu-session';
+
+let userLoaded = false;
+let allRegistrations = [];
+
+// 인증 초기화 (RULE 3: Auth Before Queries)
+const initAuth = async () => {
+try {
+if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+await signInWithCustomToken(auth, __initial_auth_token);
+} else {
+await signInAnonymously(auth);
+}
+} catch (error) {
+console.error("인증 실패:", error);
+}
+};
+
+// 인증 상태 감시
+onAuthStateChanged(auth, (user) => {
+if (user && !userLoaded) {
+userLoaded = true;
+startListening();
+}
+});
+
+// 문서 로드 시 인증 시작
+window.addEventListener('load', initAuth);
+
+// 실시간 데이터 감시 (RULE 1 & 2 준수)
+function startListening() {
+if (!auth.currentUser) return;
+
+// 공용 데이터 경로: /artifacts/{appId}/public/data/{collectionName}
+const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
+// 단순 쿼리 사용 (RULE 2: No Complex Queries)
+// orderBy를 제거하거나 서버 측 인덱스 없이 작동하도록 클라이언트에서 정렬하는 것을 권장하지만,
+// 단일 필드 orderBy는 기본적으로 지원될 수 있습니다. 만약 에러가 계속되면 orderBy를 지워야 합니다.
+const q = query(registrationsRef);
+onSnapshot(q, (snapshot) => {
+allRegistrations = snapshot.docs.map(doc => ({
+id: doc.id,
+...doc.data()
+}));
+// 클라이언트 사이드 정렬 (인덱스 에러 방지용)
+allRegistrations.sort((a, b) => {
+const timeA = a.createdAt?.seconds || 0;
+const timeB = b.createdAt?.seconds || 0;
+return timeA - timeB;
+});
+
+updateUI();
+}, (error) => {
+console.error("Firestore Listen Error:", error);
+// 권한 에러 시 사용자에게 알림 (alert 대신 UI 메시지 권장)
+});
+}
+
+function updateUI() {
+const count = allRegistrations.length;
+document.getElementById('live-count').innerText = count;
+document.getElementById('admin-count').innerText = count;
+const submitBtn = document.getElementById('submit-btn');
+if (count >= 50) {
+submitBtn.disabled = true;
+submitBtn.innerHTML = "신청 마감됨";
+submitBtn.className = "w-full bg-gray-400 text-white font-bold py-4 rounded-xl cursor-not-allowed";
+} else {
+submitBtn.disabled = false;
+submitBtn.innerHTML = "<span>신청서 제출</span>";
+submitBtn.className = "w-full bg-pink-500 text-white font-bold py-4 rounded-xl hover:bg-pink-600 shadow-lg transition-all flex justify-center items-center";
+}
+
+renderAdminTable();
+}
+
+// 폼 제출 이벤트
+document.getElementById('regForm').addEventListener('submit', async (e) => {
+e.preventDefault();
+if (!auth.currentUser) {
+alert("인증 중입니다. 잠시 후 다시 시도해주세요.");
+return;
+}
+if (allRegistrations.length >= 50) {
+alert("이미 선착순 마감되었습니다.");
+return;
+}
+
+const submitBtn = document.getElementById('submit-btn');
+const originalContent = submitBtn.innerHTML;
+submitBtn.disabled = true;
+submitBtn.innerHTML = '<div class="loading-spinner"></div>';
+
+const name = document.getElementById('name').value;
+const team = document.getElementById('team').value;
+const emailId = document.getElementById('emailId').value.trim();
+
+try {
+// 저장 경로 확인
+await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'registrations'), {
+name,
+team,
+email: emailId + "@coupang.com",
+createdAt: serverTimestamp()
+});
+alert("성공적으로 신청되었습니다!");
+document.getElementById('regForm').reset();
+} catch (error) {
+console.error("제출 에러:", error);
+alert("신청 중 오류가 발생했습니다: " + error.message);
+} finally {
+submitBtn.disabled = false;
+submitBtn.innerHTML = originalContent;
+}
+});
+
+// 테이블 렌더링
+window.renderAdminTable = function() {
+const tbody = document.getElementById('admin-table-body');
+const noData = document.getElementById('no-data');
+tbody.innerHTML = '';
+if (allRegistrations.length === 0) {
+noData.classList.remove('hidden');
+} else {
+noData.classList.add('hidden');
+allRegistrations.forEach((data, index) => {
+const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : '처리 중...';
+tbody.innerHTML += `
+<tr class="border-b hover:bg-gray-50 transition-colors text-sm">
+<td class="p-4 text-gray-500">${index + 1}</td>
+<td class="p-4 font-bold text-gray-800">${data.name}</td>
+<td class="p-4 text-gray-600">${data.team}</td>
+<td class="p-4 text-gray-600">${data.email}</td>
+<td class="p-4 text-gray-500">${time}</td>
+</tr>
+`;
+});
+}
+}
+
+// 탭 전환
+window.switchTab = function(type) {
+document.getElementById('section-form').classList.toggle('hidden', type === 'admin');
+document.getElementById('section-admin').classList.toggle('hidden', type === 'form');
+document.getElementById('tab-form').classList.toggle('active', type === 'form');
+document.getElementById('tab-admin').classList.toggle('active', type === 'admin');
+if (type === 'admin') renderAdminTable();
+}
+
+// 엑셀 다운로드
+window.downloadExcel = function() {
+if (allRegistrations.length === 0) return;
+let csv = "번호,이름,팀,이메일,신청시간\n";
+allRegistrations.forEach((d, i) => {
+const time = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleString() : '-';
+csv += `${i + 1},${d.name},${d.team},${d.email},${time}\n`;
+});
+const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = "볼꾸_세션_신청자명단.csv";
+link.click();
+}
+</script>
+</body>
+</html>
