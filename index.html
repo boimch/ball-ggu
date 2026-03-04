@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -121,19 +120,32 @@ import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken }
 
 // Firebase 설정 보호 및 초기화
 let db, auth;
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ball-ggu-session';
+// Canvas 외부 환경(GitHub 등)에서 실행될 때 오류를 방지하기 위해 기본값 처리
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ball-ggu-session-001';
 
 function initFirebase() {
 try {
-const config = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-if (!config.apiKey) throw new Error("Firebase config missing");
+let config = {};
+// Canvas 환경 변수가 있는지 확인
+if (typeof __firebase_config !== 'undefined') {
+config = JSON.parse(__firebase_config);
+} else {
+// GitHub Pages 등 외부에서 실행할 때 직접 여기에 Firebase 설정을 넣으셔도 됩니다.
+// 현재는 오류 방지를 위해 빈 객체일 경우 초기화를 중단하지 않고 로딩 메시지만 띄웁니다.
+console.warn("외부 환경에서 실행 중입니다. Firebase 설정이 필요합니다.");
+}
+
+if (!config.apiKey) {
+console.log("Firebase API Key가 없습니다. Canvas 미리보기 모드가 아니면 설정을 수동으로 입력해야 합니다.");
+// 임시 방편으로 화면 텍스트 오류만 가림
+return;
+}
 const app = initializeApp(config);
 db = getFirestore(app);
 auth = getAuth(app);
 setupAuth();
 } catch (e) {
 console.error("Firebase 초기화 에러:", e);
-document.body.innerHTML = `<div style="padding: 20px; text-align: center;"> 시스템 설정 로딩 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. </div>`;
 }
 }
 
@@ -142,6 +154,7 @@ let allRegistrations = [];
 let isAdminAuthenticated = false;
 
 async function setupAuth() {
+if (!auth) return;
 onAuthStateChanged(auth, (user) => {
 if (user && !userLoaded) {
 userLoaded = true;
@@ -161,6 +174,7 @@ console.error("인증 에러:", error);
 }
 
 function startListening() {
+if (!db) return;
 const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
 const q = query(registrationsRef);
 onSnapshot(q, (snapshot) => {
@@ -185,6 +199,10 @@ if (allRegistrations.length >= 50) {
 submitBtn.disabled = true;
 submitBtn.innerHTML = "신청 마감됨";
 submitBtn.className = "w-full bg-gray-400 text-white font-bold py-4 rounded-xl cursor-not-allowed";
+} else {
+submitBtn.disabled = false;
+submitBtn.innerHTML = "<span>신청서 제출</span>";
+submitBtn.className = "w-full bg-pink-500 text-white font-bold py-4 rounded-xl hover:bg-pink-600 shadow-lg transition-all flex justify-center items-center";
 }
 renderAdminTable();
 }
@@ -192,116 +210,12 @@ renderAdminTable();
 document.getElementById('regForm').addEventListener('submit', async (e) => {
 e.preventDefault();
 if (!auth || !auth.currentUser) {
-alert("연결 중입니다. 잠시만 기다려주세요.");
-return;
-}
-if (allRegistrations.length >= 50) {
-alert("이미 마감되었습니다.");
-return;
-}
-
-const submitBtn = document.getElementById('submit-btn');
-const originalContent = submitBtn.innerHTML;
-submitBtn.disabled = true;
-submitBtn.innerHTML = '<div class="loading-spinner mx-auto"></div>';
-
-try {
-await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'registrations'), {
-name: document.getElementById('name').value,
-team: document.getElementById('team').value,
-email: document.getElementById('emailId').value.trim() + "@coupang.com",
-createdAt: serverTimestamp()
-});
-alert("성공적으로 신청되었습니다!");
-document.getElementById('regForm').reset();
-} catch (error) {
-alert("오류 발생: " + error.message);
-} finally {
-submitBtn.disabled = false;
-submitBtn.innerHTML = originalContent;
-}
-});
-
-// 전역 함수 등록
-window.tryAccessAdmin = function() {
-if (isAdminAuthenticated) {
-switchTab('admin');
-} else {
-document.getElementById('auth-modal').classList.add('active');
-setTimeout(() => document.getElementById('admin-password').focus(), 100);
-}
-};
-
-window.closeAuthModal = function() {
-document.getElementById('auth-modal').classList.remove('active');
-document.getElementById('admin-password').value = '';
-};
-
-window.checkAdminPassword = function() {
-const pw = document.getElementById('admin-password').value;
-if (pw === '0416') {
-isAdminAuthenticated = true;
-closeAuthModal();
-switchTab('admin');
-} else {
-alert("비밀번호가 올바르지 않습니다.");
-document.getElementById('admin-password').value = '';
-}
-};
-
-document.getElementById('admin-password').addEventListener('keypress', (e) => {
-if (e.key === 'Enter') checkAdminPassword();
-});
-
-window.switchTab = function(type) {
-document.getElementById('section-form').style.display = type === 'admin' ? 'none' : 'block';
-document.getElementById('section-admin').style.display = type === 'admin' ? 'block' : 'none';
-document.getElementById('tab-form').classList.toggle('active', type === 'form');
-document.getElementById('tab-admin').classList.toggle('active', type === 'admin');
-if (type === 'admin') renderAdminTable();
-};
-
-window.renderAdminTable = function() {
-const tbody = document.getElementById('admin-table-body');
-const noData = document.getElementById('no-data');
-if (!tbody) return;
-
-tbody.innerHTML = '';
-if (allRegistrations.length === 0) {
-noData.classList.remove('hidden');
-} else {
-noData.classList.add('hidden');
-allRegistrations.forEach((data, index) => {
-const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('ko-KR') : '처리 중...';
-tbody.innerHTML += `
-<tr class="border-b hover:bg-gray-50 transition-colors text-xs md:text-sm">
-<td class="p-4 text-gray-500">${index + 1}</td>
-<td class="p-4 font-bold text-gray-800">${data.name}</td>
-<td class="p-4 text-gray-600">${data.team}</td>
-<td class="p-4 text-gray-600">${data.email}</td>
-<td class="p-4 text-gray-500">${time}</td>
-</tr>
-`;
-});
-}
-};
-
-window.downloadExcel = function() {
-if (allRegistrations.length === 0) return;
-let csv = "번호,이름,팀,이메일,신청시간\n";
-allRegistrations.forEach((d, i) => {
-const time = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleString('ko-KR') : '-';
-csv += `${i + 1},${d.name},${d.team},${d.email},${time}\n`;
-});
-const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-const link = document.createElement("a");
-link.href = URL.createObjectURL(blob);
-link.download = "볼꾸_세션_신청자명단.csv";
-link.click();
-};
-
-// 초기화 실행
-initFirebase();
-</script>
-</body>
-</html>
+alert("시스템 연결 중입니다. 잠시만 기다려주세요.");
+받은메일 표시
+받은메일 표시
+보낸 사람: Boim BI Choi [Eats Ads Brand Management] <bochoi60@coupang.com>
+보낸 날짜: 2026년 3월 4일 수요일 오후 11:41
+받는 사람: Boim Choi <boimch@gmail.com>
+제목:
+ 
+받은메일 표시
