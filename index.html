@@ -9,23 +9,23 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
-body { font-family: 'Noto Sans KR', sans-serif; background-color: #fdf9f3; }
+body { font-family: 'Noto Sans KR', sans-serif; background-color: #fdf9f3; margin: 0; padding: 0; }
 .tab-btn.active { border-bottom: 3px solid #ff82a9; color: #ff82a9; }
 .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ff82a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 /* Modal Style */
-.modal-overlay { background-color: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; }
+.modal-overlay { background-color: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; }
 .modal-overlay.active { display: flex; }
 </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-6">
 
 <!-- 비밀번호 확인 모달 -->
 <div id="auth-modal" class="modal-overlay">
-<div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm mx-4">
+<div class="bg-white p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-sm mx-4">
 <h3 class="text-xl font-bold mb-4 text-center text-gray-800">🔐 관리자 인증</h3>
 <p class="text-sm text-gray-500 mb-6 text-center">관리자 비밀번호를 입력해주세요.</p>
-<input type="password" id="admin-password" class="w-full p-3 border rounded-xl mb-4 outline-pink-400 text-center text-2xl tracking-widest" placeholder="****" maxlength="4">
+<input type="password" id="admin-password" class="w-full p-3 border rounded-xl mb-4 outline-pink-400 text-center text-2xl tracking-widest" placeholder="****" maxlength="4" inputmode="numeric">
 <div class="flex gap-3">
 <button onclick="closeAuthModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold">취소</button>
 <button onclick="checkAdminPassword()" class="flex-1 py-3 bg-pink-500 text-white rounded-xl font-bold shadow-lg">확인</button>
@@ -35,25 +35,113 @@ body { font-family: 'Noto Sans KR', sans-serif; background-color: #fdf9f3; }
 
 <div class="max-w-4xl mx-auto">
 <!-- 탭 메뉴 -->
-<div class="flex space-x-8 mb-8 border-b border-gray-200">
-<button onclick="switchTab('form')" id="tab-form" class="tab-btn active pb-4 font-bold text-lg transition-all">📝 신청하기</button>
-<button onclick="tryAccessAdmin()" id="tab-admin" class="tab-btn pb-4 font-bold text-lg text-gray-400 transition-all">🔐 관리자 리스트</button>
-받은메일 표시
+<div class="flex space-x-6 md:space-x-8 mb-6 border-b border-gray-200">
+<button onclick="switchTab('form')" id="tab-form" class="tab-btn active pb-4 font-bold text-base md:text-lg transition-all">📝 신청하기</button>
+<button onclick="tryAccessAdmin()" id="tab-admin" class="tab-btn pb-4 font-bold text-base md:text-lg text-gray-400 transition-all">🔐 관리자 리스트</button>
+</div>
+
+<!-- [1] 신청 폼 섹션 -->
+<div id="section-form" class="bg-white rounded-3xl shadow-xl overflow-hidden">
+<div class="bg-pink-400 p-6 md:p-10 text-white relative">
+<h1 class="text-2xl md:text-3xl font-bold">🖊️ 3월 볼꾸 세션 신청</h1>
+<p class="mt-2 opacity-90 text-sm md:text-base">선착순 50명! 현재 <span id="live-count" class="font-bold underline text-yellow-200">--</span>명 신청 중</p>
+</div>
+<form id="regForm" class="p-6 md:p-8 space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-sm font-bold mb-2">이름</label>
+<input type="text" id="name" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="성함을 입력하세요">
+</div>
+<div>
+<label class="block text-sm font-bold mb-2">팀</label>
+<input type="text" id="team" required class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400" placeholder="소속 팀을 입력하세요">
+</div>
+</div>
+
+<div>
+<label class="block text-sm font-bold mb-2">사내 이메일 주소</label>
+<div class="relative flex items-center">
+<input type="text" id="emailId" required
+class="w-full p-3 bg-gray-50 border rounded-xl outline-pink-400 pr-32"
+placeholder="이메일 아이디">
+<span class="absolute right-4 text-gray-400 font-medium text-sm md:text-base">@coupang.com</span>
+</div>
+</div>
+<div class="bg-pink-50 p-4 md:p-6 rounded-2xl border border-pink-100">
+<label class="block text-sm font-bold mb-3 text-pink-800">
+⚠️ 해당 프로그램은 선착순이기 때문에 신청하시면 꼭 참석해 주셔야 합니다. 이해하셨나요?
+</label>
+<select id="agreement" required class="w-full p-3 bg-white border border-pink-200 rounded-xl outline-pink-400 text-sm">
+<option value="" disabled selected>선택해 주세요</option>
+<option value="네, 이해했습니다">네, 이해했습니다</option>
+</select>
+</div>
+
+<button type="submit" id="submit-btn" class="w-full bg-pink-500 text-white font-bold py-4 rounded-xl hover:bg-pink-600 shadow-lg transition-all flex justify-center items-center">
+<span>신청서 제출</span>
+</button>
+</form>
+</div>
+
+<!-- [2] 관리자 리스트 섹션 -->
+<div id="section-admin" class="hidden bg-white rounded-3xl shadow-xl p-6 md:p-8">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+<h2 class="text-xl md:text-2xl font-bold">📊 참여자 명단 (<span id="admin-count">0</span>/50)</h2>
+<div class="flex gap-2 w-full md:w-auto">
+<button onclick="downloadExcel()" class="flex-1 md:flex-none bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600">
+<i class="fa-solid fa-file-excel mr-2"></i>엑셀 다운로드
+</button>
+</div>
+</div>
+<div class="overflow-x-auto -mx-6 md:mx-0">
+<table class="w-full text-left border-collapse min-w-[500px]">
+<thead class="bg-gray-50 border-b">
+<tr>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">번호</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이름</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">팀</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">이메일</th>
+<th class="p-4 text-xs font-bold text-gray-600 uppercase tracking-wider">신청시간</th>
+</tr>
+</thead>
+<tbody id="admin-table-body">
+<!-- 데이터 로드됨 -->
+</tbody>
+</table>
+</div>
+<div id="no-data" class="text-center py-10 text-gray-400">신청자가 없습니다.</div>
+</div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+// Firebase 설정 보호 및 초기화
+let db, auth;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ball-ggu-session';
+
+function initFirebase() {
+try {
+const config = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+if (!config.apiKey) throw new Error("Firebase config missing");
+const app = initializeApp(config);
+db = getFirestore(app);
+auth = getAuth(app);
+setupAuth();
+} catch (e) {
+console.error("Firebase 초기화 에러:", e);
+document.body.innerHTML = `<div style="padding: 20px; text-align: center;"> 시스템 설정 로딩 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. </div>`;
+}
+}
+
+let userLoaded = false;
+let allRegistrations = [];
 let isAdminAuthenticated = false;
 
-// 인증 초기화
-const initAuth = async () => {
-try {
-if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-await signInWithCustomToken(auth, __initial_auth_token);
-} else {
-await signInAnonymously(auth);
-}
-} catch (error) {
-console.error("인증 실패:", error);
-}
-};
-
+async function setupAuth() {
 onAuthStateChanged(auth, (user) => {
 if (user && !userLoaded) {
 userLoaded = true;
@@ -61,10 +149,18 @@ startListening();
 }
 });
 
-window.addEventListener('load', initAuth);
+try {
+if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+await signInWithCustomToken(auth, __initial_auth_token);
+} else {
+await signInAnonymously(auth);
+}
+} catch (error) {
+console.error("인증 에러:", error);
+}
+}
 
 function startListening() {
-if (!auth.currentUser) return;
 const registrationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
 const q = query(registrationsRef);
 onSnapshot(q, (snapshot) => {
@@ -75,13 +171,15 @@ id: doc.id,
 allRegistrations.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
 updateUI();
 }, (error) => {
-console.error("Firestore Listen Error:", error);
+console.error("데이터 수신 에러:", error);
 });
 }
 
 function updateUI() {
-document.getElementById('live-count').innerText = allRegistrations.length;
-document.getElementById('admin-count').innerText = allRegistrations.length;
+const liveCount = document.getElementById('live-count');
+const adminCount = document.getElementById('admin-count');
+if (liveCount) liveCount.innerText = allRegistrations.length;
+if (adminCount) adminCount.innerText = allRegistrations.length;
 const submitBtn = document.getElementById('submit-btn');
 if (allRegistrations.length >= 50) {
 submitBtn.disabled = true;
@@ -91,10 +189,12 @@ submitBtn.className = "w-full bg-gray-400 text-white font-bold py-4 rounded-xl c
 renderAdminTable();
 }
 
-// 폼 제출
 document.getElementById('regForm').addEventListener('submit', async (e) => {
 e.preventDefault();
-if (!auth.currentUser) return;
+if (!auth || !auth.currentUser) {
+alert("연결 중입니다. 잠시만 기다려주세요.");
+return;
+}
 if (allRegistrations.length >= 50) {
 alert("이미 마감되었습니다.");
 return;
@@ -122,13 +222,13 @@ submitBtn.innerHTML = originalContent;
 }
 });
 
-// 관리자 접근 로직
+// 전역 함수 등록
 window.tryAccessAdmin = function() {
 if (isAdminAuthenticated) {
 switchTab('admin');
 } else {
 document.getElementById('auth-modal').classList.add('active');
-document.getElementById('admin-password').focus();
+setTimeout(() => document.getElementById('admin-password').focus(), 100);
 }
 };
 
@@ -146,18 +246,16 @@ switchTab('admin');
 } else {
 alert("비밀번호가 올바르지 않습니다.");
 document.getElementById('admin-password').value = '';
-document.getElementById('admin-password').focus();
 }
 };
 
-// Enter 키 대응
 document.getElementById('admin-password').addEventListener('keypress', (e) => {
 if (e.key === 'Enter') checkAdminPassword();
 });
 
 window.switchTab = function(type) {
-document.getElementById('section-form').classList.toggle('hidden', type === 'admin');
-document.getElementById('section-admin').classList.toggle('hidden', type === 'form');
+document.getElementById('section-form').style.display = type === 'admin' ? 'none' : 'block';
+document.getElementById('section-admin').style.display = type === 'admin' ? 'block' : 'none';
 document.getElementById('tab-form').classList.toggle('active', type === 'form');
 document.getElementById('tab-admin').classList.toggle('active', type === 'admin');
 if (type === 'admin') renderAdminTable();
@@ -166,15 +264,17 @@ if (type === 'admin') renderAdminTable();
 window.renderAdminTable = function() {
 const tbody = document.getElementById('admin-table-body');
 const noData = document.getElementById('no-data');
+if (!tbody) return;
+
 tbody.innerHTML = '';
 if (allRegistrations.length === 0) {
 noData.classList.remove('hidden');
 } else {
 noData.classList.add('hidden');
 allRegistrations.forEach((data, index) => {
-const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : '처리 중...';
+const time = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('ko-KR') : '처리 중...';
 tbody.innerHTML += `
-<tr class="border-b hover:bg-gray-50 transition-colors text-sm">
+<tr class="border-b hover:bg-gray-50 transition-colors text-xs md:text-sm">
 <td class="p-4 text-gray-500">${index + 1}</td>
 <td class="p-4 font-bold text-gray-800">${data.name}</td>
 <td class="p-4 text-gray-600">${data.team}</td>
@@ -190,7 +290,7 @@ window.downloadExcel = function() {
 if (allRegistrations.length === 0) return;
 let csv = "번호,이름,팀,이메일,신청시간\n";
 allRegistrations.forEach((d, i) => {
-const time = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleString() : '-';
+const time = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleString('ko-KR') : '-';
 csv += `${i + 1},${d.name},${d.team},${d.email},${time}\n`;
 });
 const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -199,6 +299,9 @@ link.href = URL.createObjectURL(blob);
 link.download = "볼꾸_세션_신청자명단.csv";
 link.click();
 };
+
+// 초기화 실행
+initFirebase();
 </script>
 </body>
 </html>
